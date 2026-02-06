@@ -21,7 +21,7 @@ export default function AdminMenu({ minimiseMenu, maximiseMenu }) {
     localStorage.getItem("preferredToggleMenu") || true;
   const { Admin } = menuData;
   const [toggleMenu, showToggleMenu, hideToggleMenu] = useDialog(
-    JSON.parse(preferredToggleMenu)
+    JSON.parse(preferredToggleMenu),
   );
   const [show, handleShow, handleClose] = useDialog();
 
@@ -87,10 +87,16 @@ export default function AdminMenu({ minimiseMenu, maximiseMenu }) {
               <div className="">
                 <p className="tw-font-medium tw-text-lg tw-m-0">
                   <span>
-                    {(authentication?.currentUser?.displayName).split(" ")[0]}{" "}
+                    {
+                      (
+                        authentication?.currentUser?.displayName || "User"
+                      ).split(" ")[0]
+                    }{" "}
                   </span>
                   <span>
-                    {(authentication?.currentUser?.displayName).split(" ")[1]}
+                    {(authentication?.currentUser?.displayName || "User").split(
+                      " ",
+                    )[1] || ""}
                   </span>
                 </p>
                 <span className="tw-text-gray-400 tw-text-sm">Admin</span>

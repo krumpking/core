@@ -25,7 +25,7 @@ export default function Clients({ parent_container }) {
   const [clients, setClients] = useState([]);
   useEffect(() => {
     document.title = "Clients | Core Insurance Management";
-    getClients();
+    // getClients();
 
     return () => {};
   }, [clients]);
@@ -44,11 +44,11 @@ export default function Clients({ parent_container }) {
           const myUsers = data
             .filter(
               (user) =>
-                user.role.Customer === true || user.role.customer === true
+                user.role.Customer === true || user.role.customer === true,
             )
             .filter(
               (client) =>
-                client.meta.added_by_uid === authentication.currentUser.uid
+                client.meta.added_by_uid === authentication.currentUser.uid,
             );
           myUsers.length === 0 ? setClients(null) : setClients(myUsers);
         })
@@ -60,7 +60,7 @@ export default function Clients({ parent_container }) {
           .filter((user) => user.role.agent === true)
           .filter(
             (agent) =>
-              agent.meta.added_by_uid === authentication.currentUser.uid
+              agent.meta.added_by_uid === authentication.currentUser.uid,
           )
           .map((agentuid) => agentuid.uid);
 
@@ -71,10 +71,11 @@ export default function Clients({ parent_container }) {
 
         const myUsers = data
           .filter(
-            (user) => user.role.Customer === true || user.role.customer === true
+            (user) =>
+              user.role.Customer === true || user.role.customer === true,
           )
           .filter((client) =>
-            usersUnderSupervisor.includes(client.meta.added_by_uid)
+            usersUnderSupervisor.includes(client.meta.added_by_uid),
           );
         myUsers.length === 0 ? setClients(null) : setClients(myUsers);
       } catch (err) {
@@ -87,7 +88,7 @@ export default function Clients({ parent_container }) {
             .filter((user) => user.role.agent === true)
             .filter(
               (agent) =>
-                agent.meta.added_by_uid === authentication.currentUser.uid
+                agent.meta.added_by_uid === authentication.currentUser.uid,
             )
             .map((agentuid) => agentuid.uid);
 
@@ -95,7 +96,7 @@ export default function Clients({ parent_container }) {
             .filter((user) => user.role.supervisor === true)
             .filter(
               (supervisor) =>
-                supervisor.meta.added_by_uid === authentication.currentUser.uid
+                supervisor.meta.added_by_uid === authentication.currentUser.uid,
             )
             .map((supervisoruid) => supervisoruid.uid);
 
@@ -114,10 +115,10 @@ export default function Clients({ parent_container }) {
           const myUsers = data
             .filter(
               (user) =>
-                user.role.Customer === true || user.role.customer === true
+                user.role.Customer === true || user.role.customer === true,
             )
             .filter((client) =>
-              usersUnderAdmin.includes(client.meta.added_by_uid)
+              usersUnderAdmin.includes(client.meta.added_by_uid),
             );
           myUsers.length === 0 ? setClients(null) : setClients(myUsers);
         })
@@ -146,7 +147,7 @@ export default function Clients({ parent_container }) {
       .then(() =>
         toast.success(`Successfully deleted ${singleDoc.name}`, {
           position: "top-center",
-        })
+        }),
       )
       .then(async () => {
         await addDoc(logCollectionRef, {
@@ -154,7 +155,7 @@ export default function Clients({ parent_container }) {
             .toISOString()
             .slice(
               0,
-              10
+              10,
             )} ${new Date().getHours()}:${new Date().getMinutes()}:${new Date().getSeconds()}`,
           type: "user deletion",
           status: "successful",
@@ -173,7 +174,7 @@ export default function Clients({ parent_container }) {
             .toISOString()
             .slice(
               0,
-              10
+              10,
             )} ${new Date().getHours()}:${new Date().getMinutes()}:${new Date().getSeconds()}`,
           type: "sticker deletion",
           status: "failed",
@@ -189,7 +190,7 @@ export default function Clients({ parent_container }) {
   const handleSearch = ({ target: { value } }) => setSearchText(value);
   const searchByName = (data) =>
     data.filter(
-      (row) => row.name.toLowerCase().indexOf(searchText.toLowerCase()) > -1
+      (row) => row.name.toLowerCase().indexOf(searchText.toLowerCase()) > -1,
     );
 
   const [clickedIndex, setClickedIndex] = useState(null);
@@ -206,7 +207,6 @@ export default function Clients({ parent_container }) {
 
   return (
     <div className="components">
-
       <header className="tw-mx-5 tw-py-5">
         <div className="nk-block-between">
           <div className="header-txt">
@@ -225,7 +225,10 @@ export default function Clients({ parent_container }) {
                 className="classic"
                 onClick={() => {
                   if (authClaims.supervisor) {
-                    localStorage.setItem("onRefresh", "/supervisor/add-clients");
+                    localStorage.setItem(
+                      "onRefresh",
+                      "/supervisor/add-clients",
+                    );
                   } else if (authClaims.agent) {
                     localStorage.setItem("onRefresh", "/agent/add-clients");
                   }
@@ -235,10 +238,9 @@ export default function Clients({ parent_container }) {
               </Link>
             )}
           </div>
-
         </div>
       </header>
-      
+
       <Header title="Clients" subtitle="Managing Clients" />
 
       <div id="add_client_group" className="add_client_group">

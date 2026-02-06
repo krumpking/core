@@ -32,8 +32,8 @@ function Supervisors({ parent_container }) {
 
   useEffect(() => {
     document.title = "Supervisors | Core Insurance Management";
-    getSupervisors();
-    console.log("something");
+    // getSupervisors();
+
     setShouldUpdate(false);
     return () => {};
   }, [shouldUpdate]);
@@ -63,7 +63,7 @@ function Supervisors({ parent_container }) {
   const searchByName = (data) =>
     data ||
     data.filter(
-      (row) => row.name.toLowerCase().indexOf(searchText.toLowerCase()) > -1
+      (row) => row.name.toLowerCase().indexOf(searchText.toLowerCase()) > -1,
     );
 
   const indexOfLastSupervisor = currentPage * supervisorsPerPage;
@@ -71,7 +71,7 @@ function Supervisors({ parent_container }) {
   const currentSupervisors =
     !supervisors ||
     searchByName(
-      supervisors.slice(indexOfFirstSupervisor, indexOfLastSupervisor)
+      supervisors.slice(indexOfFirstSupervisor, indexOfLastSupervisor),
     );
   const totalPagesNum =
     !supervisors || Math.ceil(supervisors.length / supervisorsPerPage);
@@ -82,7 +82,7 @@ function Supervisors({ parent_container }) {
       .then(() =>
         toast.success(`Successfully deleted ${singleDoc.name}`, {
           position: "top-center",
-        })
+        }),
       )
       .then(() => setShouldUpdate(true))
       .then(async () => {
@@ -91,7 +91,7 @@ function Supervisors({ parent_container }) {
             .toISOString()
             .slice(
               0,
-              10
+              10,
             )} ${new Date().getHours()}:${new Date().getMinutes()}:${new Date().getSeconds()}`,
           type: "user deletion",
           status: "successful",
@@ -107,7 +107,7 @@ function Supervisors({ parent_container }) {
             .toISOString()
             .slice(
               0,
-              10
+              10,
             )} ${new Date().getHours()}:${new Date().getMinutes()}:${new Date().getSeconds()}`,
           type: "sticker deletion",
           status: "failed",
@@ -124,7 +124,7 @@ function Supervisors({ parent_container }) {
       .then(() =>
         toast.success(`Successfully deleted ${arr[1]}`, {
           position: "top-center",
-        })
+        }),
       )
       .then(async () => {
         await addDoc(logCollectionRef, {
@@ -132,7 +132,7 @@ function Supervisors({ parent_container }) {
             .toISOString()
             .slice(
               0,
-              10
+              10,
             )} ${new Date().getHours()}:${new Date().getMinutes()}:${new Date().getSeconds()}`,
           type: "user deletion",
           status: "successful",
@@ -146,7 +146,7 @@ function Supervisors({ parent_container }) {
             .toISOString()
             .slice(
               0,
-              10
+              10,
             )} ${new Date().getHours()}:${new Date().getMinutes()}:${new Date().getSeconds()}`,
           type: "sticker deletion",
           status: "failed",
@@ -189,21 +189,23 @@ function Supervisors({ parent_container }) {
 
   return (
     <div className="components">
-      
       <header className="tw-mx-5 tw-py-5">
         <div className="nk-block-between">
           <div className="header-txt">
-            <h1 className="tw-text-lg md:tw-text-4xl tw-font-bold">Supervisors</h1>
+            <h1 className="tw-text-lg md:tw-text-4xl tw-font-bold">
+              Supervisors
+            </h1>
             <p className="tw-text-sm tw-text-gray-500">Managing Supervisors</p>
           </div>
 
           <div id="add_client_group">
             <div></div>
-            <Link to="/admin/add-supervisor"><button className="btn cta m-3">Add Supervisor</button></Link>
+            <Link to="/admin/add-supervisor">
+              <button className="btn cta m-3">Add Supervisor</button>
+            </Link>
           </div>
         </div>
       </header>
-
 
       <Header title="Supervisors" subtitle="Managing Supervisors" />
 
@@ -292,9 +294,8 @@ function Supervisors({ parent_container }) {
                             id="firstAgentCheckbox"
                             className="agentCheckbox"
                             onChange={({ target }) => {
-                              document.getElementById(
-                                "onlyagent"
-                              ).checked = false;
+                              document.getElementById("onlyagent").checked =
+                                false;
                               return target.checked
                                 ? setDeleteArray([
                                     ...deleteArray,
@@ -302,8 +303,9 @@ function Supervisors({ parent_container }) {
                                   ])
                                 : setDeleteArray(
                                     deleteArray.filter(
-                                      (element) => element[0] !== supervisor.uid
-                                    )
+                                      (element) =>
+                                        element[0] !== supervisor.uid,
+                                    ),
                                   );
                             }}
                           />

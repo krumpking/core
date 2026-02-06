@@ -15,8 +15,8 @@ import { toast } from "react-toastify";
 import { getDocs } from "firebase/firestore";
 import { getUsers } from "../helpers/helpfulUtilities";
 //email
-import React, { useRef } from 'react';
-import emailjs from '@emailjs/browser';
+import React, { useRef } from "react";
+import emailjs from "@emailjs/browser";
 // firebase storage..
 import { ref, getDownloadURL, uploadBytesResumable } from "firebase/storage";
 import { storage } from "../helpers/firebase";
@@ -30,7 +30,7 @@ function AddUsers({ role }) {
     document.title = "Add Users | Core Insurance Management";
     if (!authClaims.agent && role !== "Customer") {
       getOrganisations();
-      getSupervisors();
+      // getSupervisors();
     }
   }, []);
   const organisationsCollectionRef = collection(db, "organisations");
@@ -42,7 +42,8 @@ function AddUsers({ role }) {
   const [transit, setTransit] = useState(false);
   const [supervisor, setSupervisor] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [password, setPassword] = useState('89900');
+  const [password, setPassword] = useState("89900");
+  const [isFormValid, setIsFormValid] = useState(false);
 
   // const [showOrganisation, setShowOrganisation] = useState(false)
   const [policyType, setPolicyType] = useState("");
@@ -55,21 +56,21 @@ function AddUsers({ role }) {
   const [supervisors, setSupervisors] = useState([]);
 
   const createPassword = () => {
-    const characterList = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!^+%&=?#$*@"
+    const characterList =
+      "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!^+%&=?#$*@";
 
-    let password = '';
+    let password = "";
     const characterListLength = characterList.length;
     for (let i = 0; i < 12; i++) {
       const characterIndex = Math.round(Math.random() * characterListLength);
       password = password + characterList.charAt(characterIndex);
     }
     return password;
-  }
+  };
 
-  useEffect(()=>{
-		setPassword(createPassword());
-	}, [])
-  
+  useEffect(() => {
+    setPassword(createPassword());
+  }, []);
 
   const getOrganisations = async () => {
     const data = await getDocs(organisationsCollectionRef);
@@ -81,28 +82,27 @@ function AddUsers({ role }) {
       ? setOrganisations(null)
       : setOrganisations(organisationArray);
   };
-  
+
   //Define email send
 
-  const sendEmail = async(data) => {
-    emailjs.send(
-      'service_gxb654m', 
-      'template_tn6pxkb',
-       data, 'zkWaW4gmtXvNtEUtU')
-    .then((result) => {
-        console.log(result.text);
-    }, (error) => {
-        console.log(error.text);
-    });
-  }
+  const sendEmail = async (data) => {
+    emailjs
+      .send("service_gxb654m", "template_tn6pxkb", data, "zkWaW4gmtXvNtEUtU")
+      .then(
+        (result) => {
+          console.log(result.text);
+        },
+        (error) => {
+          console.log(error.text);
+        },
+      );
+  };
 
   const getSupervisors = () => {
     getUsers("supervisor").then((result) => {
       result.length === 0 ? setSupervisors(null) : setSupervisors(result);
     });
   };
-
-  
 
   const [fields, handleFieldChange] = useForm({
     user_role: ["client", "customer", "Customer"].includes(role)
@@ -120,9 +120,77 @@ function AddUsers({ role }) {
     photo: "",
   });
 
-  const handleSubmit = (event) => {
-    setIsLoading(true);
+  // Validate form based on role and required fields
+  useEffect(() => {
+    const validateForm = () => {
+      // Common required fields
+      if (!fields.name || !fields.phone) {
+        return false;
+      }
+
+      // Role-specific validation
+      if (role === "supervisor") {
+        if (!fields.organisation || !fields.gender) {
+          return false;
+        }
+      }
+
+      if (role === "agent") {
+        if (!fields.gender) {
+          return false;
+        }
+        // If admin is adding agent, supervisor must be selected
+        if (authClaims.admin && !supervisor) {
+          return false;
+        }
+      }
+
+      if (role === "client" || role === "customer" || role === "Customer") {
+        if (authClaims.agent || authClaims.supervisor) {
+          if (!policyType) {
+            return false;
+          }
+        }
+        if (policyType === "comprehensive" && !fields.gender) {
+          return false;
+        }
+      }
+
+      return true;
+    };
+
+    setIsFormValid(validateForm());
+  }, [fields, role, supervisor, policyType, authClaims]);
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
+    setIsLoading(true);
+
+    // Verify user is authenticated before proceeding
+    if (!authentication.currentUser) {
+      toast.error("You must be logged in to perform this action", {
+        position: "top-center",
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    console.log("Current user UID:", authentication.currentUser.uid);
+    console.log("Current user email:", authentication.currentUser.email);
+    console.log("Submitting with role:", role);
+
+    // Force refresh the authentication token to ensure it's valid
+    try {
+      await authentication.currentUser.getIdToken(true);
+      console.log("Token refreshed successfully");
+    } catch (tokenError) {
+      console.error("Token refresh failed:", tokenError);
+      toast.error("Authentication error. Please log out and log back in.", {
+        position: "top-center",
+      });
+      setIsLoading(false);
+      return;
+    }
 
     if (comprehensive) fields["comprehensive"] = true;
     if (mtp) fields["mtp"] = true;
@@ -137,7 +205,7 @@ function AddUsers({ role }) {
       .toISOString()
       .slice(
         0,
-        10
+        10,
       )} ${new Date().getHours()}:${new Date().getMinutes()}:${new Date().getSeconds()}`;
     if (role === "agent" && authClaims.admin) {
       fields["supervisor"] = supervisor;
@@ -174,10 +242,10 @@ function AddUsers({ role }) {
                     password: fields.password,
                     to: fields.email,
                   };
-                  if(role != 'Customer'){
+                  if (role != "Customer") {
                     sendEmail(email_data);
                   }
-                  
+
                   setIsLoading(false);
                   document.form3.reset();
                 })
@@ -187,7 +255,7 @@ function AddUsers({ role }) {
                       .toISOString()
                       .slice(
                         0,
-                        10
+                        10,
                       )} ${new Date().getHours()}:${new Date().getMinutes()}:${new Date().getSeconds()}`,
                     type: "user creation",
                     status: "successful",
@@ -197,10 +265,16 @@ function AddUsers({ role }) {
                   setLogo("");
                 })
                 .catch(async (error) => {
-                  console.log(error);
+                  console.error("Error adding user:", error);
+                  console.error("Error code:", error.code);
+                  console.error("Error message:", error.message);
+                  console.error("Error details:", error.details);
 
-                  toast.error(`Failed: couldn't added ${fields.name}`, {
+                  const errorMessage =
+                    error.message || "Unknown error occurred";
+                  toast.error(`Failed to add ${fields.name}: ${errorMessage}`, {
                     position: "top-center",
+                    autoClose: 5000,
                   });
 
                   await addDoc(logCollectionRef, {
@@ -208,18 +282,19 @@ function AddUsers({ role }) {
                       .toISOString()
                       .slice(
                         0,
-                        10
+                        10,
                       )} ${new Date().getHours()}:${new Date().getMinutes()}:${new Date().getSeconds()}`,
                     type: "user creation",
                     status: "failed",
-                    message: `Failed to created ${fields.user_role} - [ ${fields.name} ] by ${authentication.currentUser.displayName}`,
+                    message: `Failed to create ${fields.user_role} - [ ${fields.name} ] by ${authentication.currentUser.displayName}. Error: ${errorMessage}`,
                   });
 
                   setPassword("");
                   setLogo("");
+                  setIsLoading(false);
                 });
             });
-        }
+        },
       );
     } else {
       // console.log(fields)
@@ -234,7 +309,7 @@ function AddUsers({ role }) {
             password: fields.password,
             to: fields.email,
           };
-          if(role != 'Customer'){
+          if (role != "Customer") {
             sendEmail(email_data);
           }
           setIsLoading(false);
@@ -246,7 +321,7 @@ function AddUsers({ role }) {
               .toISOString()
               .slice(
                 0,
-                10
+                10,
               )} ${new Date().getHours()}:${new Date().getMinutes()}:${new Date().getSeconds()}`,
             type: "user creation",
             status: "successful",
@@ -255,8 +330,15 @@ function AddUsers({ role }) {
           setPassword("");
         })
         .catch(async (error) => {
-          toast.error(`Failed: couldn't added ${fields.name}`, {
+          console.error("Error adding user:", error);
+          console.error("Error code:", error.code);
+          console.error("Error message:", error.message);
+          console.error("Error details:", error.details);
+
+          const errorMessage = error.message || "Unknown error occurred";
+          toast.error(`Failed to add ${fields.name}: ${errorMessage}`, {
             position: "top-center",
+            autoClose: 5000,
           });
 
           await addDoc(logCollectionRef, {
@@ -264,12 +346,13 @@ function AddUsers({ role }) {
               .toISOString()
               .slice(
                 0,
-                10
+                10,
               )} ${new Date().getHours()}:${new Date().getMinutes()}:${new Date().getSeconds()}`,
             type: "user creation",
             status: "failed",
-            message: `Failed to created ${fields.user_role} - [ ${fields.name} ] by ${authentication.currentUser.displayName}`,
+            message: `Failed to create ${fields.user_role} - [ ${fields.name} ] by ${authentication.currentUser.displayName}. Error: ${errorMessage}`,
           });
+          setIsLoading(false);
         });
     }
   };
@@ -278,15 +361,12 @@ function AddUsers({ role }) {
 
   return (
     <div className="boom">
-
       <header className="tw-mx-5 tw-py-5">
         <div className="nk-block-between">
           <div className="header-txt">
             <h1 className="tw-text-lg md:tw-text-4xl tw-font-bold">{`Add ${role[0].toUpperCase() + role.slice(1).toLowerCase()}`}</h1>
             <p className="tw-text-sm tw-text-gray-500">{`Add a new ${role}`}</p>
           </div>
-
-
         </div>
       </header>
 
@@ -774,7 +854,6 @@ function AddUsers({ role }) {
               )}
 
               {role !== "client" && (
-                
                 <Form.Group className="addFormGroups">
                   <Form.Label htmlFor="password"></Form.Label>
                   <Form.Control
@@ -787,27 +866,19 @@ function AddUsers({ role }) {
               )}
             </>
           )}
-          {(fields.name !== "") & (fields.email !== "") ? (
-            <div id="submit">
-              <input
-                type="submit"
-                value="Submit"
-                className="btn btn-dark cta submitcta"
-              />
-            </div>
-          ) : (
-            <div id="submit">
-              <input
-                type="button"
-                value="Submit"
-                className="btn btn-dark cta submitcta"
-                style={{
-                  background: "rgba(20, 117, 207, 0.4)",
-                  border: "1px solid #a1c8ec",
-                }}
-              />
-            </div>
-          )}
+          <div id="submit">
+            <input
+              type="submit"
+              value="Submit"
+              className="btn btn-dark cta submitcta"
+              disabled={!isFormValid}
+              style={{
+                background: !isFormValid ? "rgba(20, 117, 207, 0.4)" : "",
+                border: !isFormValid ? "1px solid #a1c8ec" : "",
+                cursor: !isFormValid ? "not-allowed" : "pointer",
+              }}
+            />
+          </div>
         </Form>
       </div>
     </div>

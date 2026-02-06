@@ -1,9 +1,8 @@
-import {initializeApp} from 'firebase/app'
-import { getAuth, onAuthStateChanged } from "firebase/auth"
-import { getFunctions } from "firebase/functions"
-import { getFirestore } from '@firebase/firestore'
-import { getStorage } from 'firebase/storage'
-
+import { initializeApp } from "firebase/app";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { getFunctions } from "firebase/functions";
+import { getFirestore } from "@firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 /*const firebaseConfig = {
     apiKey: process.env.REACT_APP_API_KEY,
@@ -16,43 +15,49 @@ import { getStorage } from 'firebase/storage'
 }*/
 
 const firebaseConfig = {
-    apiKey: "AIzaSyCNh78e5FjfuovnKUrOqa3BYnhnfpRKvlo",
-    authDomain: "mimplatform.firebaseapp.com",
-    databaseURL: "https://mimplatform-default-rtdb.europe-west1.firebasedatabase.app",
-    projectId: "mimplatform",
-    storageBucket: "mimplatform.appspot.com",
-    messagingSenderId: "328284959247",
-    appId: "1:328284959247:web:158fb5a6693135c342a97a",
-    measurementId: "G-B75B4Q78C3"
-  };
+  apiKey: "AIzaSyC_6jQN-yrgyDcwSccpf9jHPMrtTBZK3sI",
+  authDomain: "fire-base-animal-guesser.firebaseapp.com",
+  databaseURL: "https://fire-base-animal-guesser.firebaseio.com",
+  projectId: "fire-base-animal-guesser",
+  storageBucket: "fire-base-animal-guesser.appspot.com",
+  messagingSenderId: "464928249078",
+  appId: "1:464928249078:web:3db78a6c4d3af7d01008d7",
+};
 
-const app = initializeApp(firebaseConfig)
+const app = initializeApp(firebaseConfig);
 
-export const authentication = getAuth(app)
-export const functions = getFunctions(app)
+export const authentication = getAuth(app);
+// Ensure functions use the same app instance and default region (us-central1)
+export const functions = getFunctions(app, "us-central1");
 
-export const db = getFirestore(app)
+export const db = getFirestore(app);
 
-export const storage = getStorage(app)
+export const storage = getStorage(app);
 
+export function onAuthStateChange(
+  userCallback,
+  claimsCallback,
+  loadingCallback = null,
+) {
+  if (loadingCallback) loadingCallback(true);
 
-export function onAuthStateChange(userCallback, claimsCallback, loadingCallback = null) {
-    loadingCallback(true)
-    return onAuthStateChanged(authentication, user => {
-        if (user) {
-            return authentication.currentUser.getIdTokenResult().then((idTokenResult) => {
-                claimsCallback(idTokenResult.claims)
-                userCallback({ loggedIn: true, ...user });
-                loadingCallback(false)
-            }).catch(error => {
-                console.log(error)
-                loadingCallback(false)
-                return userCallback({ loggedIn: false });
-            });
-        } else {
-            loadingCallback(false)
-           return userCallback({ loggedIn: false });
-      }
-    });
+  return onAuthStateChanged(authentication, (user) => {
+    if (user) {
+      return authentication.currentUser
+        .getIdTokenResult()
+        .then((idTokenResult) => {
+          claimsCallback(idTokenResult.claims);
+          userCallback({ loggedIn: true, ...user });
+          if (loadingCallback) loadingCallback(false);
+        })
+        .catch((error) => {
+          console.error(error);
+          if (loadingCallback) loadingCallback(false);
+          return userCallback({ loggedIn: false });
+        });
+    } else {
+      if (loadingCallback) loadingCallback(false);
+      return userCallback({ loggedIn: false });
+    }
+  });
 }
-

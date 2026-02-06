@@ -35,12 +35,12 @@ function Dashboard({ largeContentClass }) {
     if (authClaims.agent) {
       getUsers("Customer").then((result) => setUsers(result));
       getAllStickers([authentication.currentUser.uid]).then((result) =>
-        setPolicies(result)
+        setPolicies(result),
       );
 
       getAllClaims([authentication.currentUser.uid]).then((result) => {
         const settledClaims = result.filter(
-          (claim) => claim.status === "settled"
+          (claim) => claim.status === "settled",
         );
         setClaims(result);
         setClaimsSettled(settledClaims);
@@ -53,74 +53,70 @@ function Dashboard({ largeContentClass }) {
           .filter((user) => user.role.agent === true)
           .filter(
             (agent) =>
-              agent.meta.added_by_uid === authentication.currentUser.uid
+              agent.meta.added_by_uid === authentication.currentUser.uid,
           )
           .map((agentuid) => agentuid.uid);
         getAllStickers([...myAgents, authentication.currentUser.uid]).then(
-          (result) => setPolicies(result)
+          (result) => setPolicies(result),
         );
 
         getAllClaims([...myAgents, authentication.currentUser.uid]).then(
           (result) => {
             const settledClaims = result.filter(
-              (claim) => claim.status === "settled"
+              (claim) => claim.status === "settled",
             );
             setClaims(result);
             setClaimsSettled(settledClaims);
-          }
+          },
         );
       });
     } else if (authClaims.admin) {
-      getUsers("supervisor").then((result) => setUsers(result));
-      listUsers().then(({ data }) => {
-        const myAgents = data
-          .filter((user) => user.role.agent)
-          .filter(
-            (agent) =>
-              agent.meta.added_by_uid === authentication.currentUser.uid
-          )
-          .map((agentuid) => agentuid.uid);
-
-        const mySupervisors = data
-          .filter((user) => user.role.supervisor)
-          .filter(
-            (supervisor) =>
-              supervisor.meta.added_by_uid === authentication.currentUser.uid
-          )
-          .map((supervisoruid) => supervisoruid.uid);
-
-        const agentsUnderMySupervisors = data
-          .filter((user) => user.role.agent === true)
-          .filter((agent) => mySupervisors.includes(agent.meta.added_by_uid))
-          .map((agentuid) => agentuid.uid);
-
-        getAllStickers([
-          ...myAgents,
-          ...mySupervisors,
-          ...agentsUnderMySupervisors,
-          authentication.currentUser.uid,
-        ]).then((result) => setPolicies(result));
-
-        getAllClaims([
-          ...myAgents,
-          ...mySupervisors,
-          ...agentsUnderMySupervisors,
-          authentication.currentUser.uid,
-        ]).then((result) => {
-          const settledClaims = result.filter(
-            (claim) => claim.status === "settled"
-          );
-          setClaims(result);
-          setClaimsSettled(settledClaims);
-        });
-      });
+      // getUsers("supervisor").then((result) => setUsers(result));
+      // listUsers().then(({ data }) => {
+      //   const myAgents = data
+      //     .filter((user) => user.role.agent)
+      //     .filter(
+      //       (agent) =>
+      //         agent.meta.added_by_uid === authentication.currentUser.uid
+      //     )
+      //     .map((agentuid) => agentuid.uid);
+      //   const mySupervisors = data
+      //     .filter((user) => user.role.supervisor)
+      //     .filter(
+      //       (supervisor) =>
+      //         supervisor.meta.added_by_uid === authentication.currentUser.uid
+      //     )
+      //     .map((supervisoruid) => supervisoruid.uid);
+      //   const agentsUnderMySupervisors = data
+      //     .filter((user) => user.role.agent === true)
+      //     .filter((agent) => mySupervisors.includes(agent.meta.added_by_uid))
+      //     .map((agentuid) => agentuid.uid);
+      //   getAllStickers([
+      //     ...myAgents,
+      //     ...mySupervisors,
+      //     ...agentsUnderMySupervisors,
+      //     authentication.currentUser.uid,
+      //   ]).then((result) => setPolicies(result));
+      //   getAllClaims([
+      //     ...myAgents,
+      //     ...mySupervisors,
+      //     ...agentsUnderMySupervisors,
+      //     authentication.currentUser.uid,
+      //   ]).then((result) => {
+      //     const settledClaims = result.filter(
+      //       (claim) => claim.status === "settled"
+      //     );
+      //     setClaims(result);
+      //     setClaimsSettled(settledClaims);
+      //   });
+      // });
     } else if (authClaims.superadmin) {
       getUsers("admin").then((result) => setUsers(result));
       getAllSuperAdminStickers().then((result) => setPolicies(result));
 
       getAllSuperAdminClaims().then((result) => {
         const settledClaims = result.filter(
-          (claim) => claim.status === "settled"
+          (claim) => claim.status === "settled",
         );
         setClaims(result);
         setClaimsSettled(settledClaims);

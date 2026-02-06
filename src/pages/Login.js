@@ -38,6 +38,12 @@ function Login() {
     // currentUser?.loggedIn && history.push(from);
   }, []);
 
+  useEffect(() => {
+    if (currentUser?.loggedIn && authClaims) {
+      // Component will automatically redirect based on role
+    }
+  }, [currentUser, authClaims]);
+
   const handleSignIn = async (event) => {
     event.preventDefault();
     const { email, password } = user;
@@ -46,7 +52,7 @@ function Login() {
       const result = await signInWithEmailAndPassword(
         authentication,
         email,
-        password
+        password,
       );
       if (result) {
         setLoading(false);
@@ -84,88 +90,86 @@ function Login() {
   return (
     <div className="auth-wrapper">
       <div className="auth-overlay">
-      
-      <form onSubmit={handleSignIn} className="tw-text-gray-500">
-      <center><img src={logoVertical} width={120} alt="CORE" /></center>
-        
-        {error && <Alert variant="danger">{error}</Alert>}
-        <div className="login-inputs">
-          <label htmlFor="email">Email</label>
-          <input
-            type="email"
-            placeholder="Enter email"
-            name="email"
-            id="email"
-            className="px-2 py-2"
-            onChange={(event) =>
-              setUser({ ...user, email: event.target.value })
-            }
-            required
-          />
-        </div>
+        <form onSubmit={handleSignIn} className="tw-text-gray-500">
+          <center>
+            <img src={logoVertical} width={120} alt="CORE" />
+          </center>
 
-        <div className="login-inputs">
-         <label htmlFor="password_input">Password</label> 
-          <div id="password">
+          {error && <Alert variant="danger">{error}</Alert>}
+          <div className="login-inputs">
+            <label htmlFor="email">Email</label>
             <input
-              type={password}
-              autoComplete="off"
-              placeholder="Enter password"
-              name=""
-              id="password_input"
+              type="email"
+              placeholder="Enter email"
+              name="email"
+              id="email"
               className="px-2 py-2"
               onChange={(event) =>
-                setUser({ ...user, password: event.target.value })
+                setUser({ ...user, email: event.target.value })
               }
               required
             />
-            <span>
-              {isVisible ? (
-                <MdVisibility
-                  className="visibilityIcon"
-                  onClick={() => {
-                    setPassword("password");
-                    setIsVisible(false);
-                  }}
-                />
-              ) : (
-                <MdVisibilityOff
-                  className="visibilityIcon"
-                  onClick={() => {
-                    setPassword("text");
-                    setIsVisible(true);
-                  }}
-                />
-              )}
-            </span>
           </div>
-          <Link to="/forgot-password">
-            <p className="tw-fgt">
-              Forgot Password?
-            </p>
-          </Link>
-        </div>
-        <div>
-          <input
-            type="checkbox"
-            name="signedIn"
-            id="checkbox"
-            className="tw-accent-gray-800 tw-cursor-pointer"
-          />
-          <label htmlFor="checkbox">Keep me signed in</label>
-        </div>
-        <div
-          id="submit_login"
-          className="tw-flex tw-justify-between tw-mt-5 tw-items-end"
-        >
-          <input
-            type="submit"
-            className="login-btn tw-px-3 md:tw-px-5 tw-py-2 tw-bg-gray-900 tw-text-white tw-rounded hover:tw-bg-gray-800"
-            value="Login"
-          />
-          
-        </div>
-      </form>
+
+          <div className="login-inputs">
+            <label htmlFor="password_input">Password</label>
+            <div id="password">
+              <input
+                type={password}
+                autoComplete="off"
+                placeholder="Enter password"
+                name=""
+                id="password_input"
+                className="px-2 py-2"
+                onChange={(event) =>
+                  setUser({ ...user, password: event.target.value })
+                }
+                required
+              />
+              <span>
+                {isVisible ? (
+                  <MdVisibility
+                    className="visibilityIcon"
+                    onClick={() => {
+                      setPassword("password");
+                      setIsVisible(false);
+                    }}
+                  />
+                ) : (
+                  <MdVisibilityOff
+                    className="visibilityIcon"
+                    onClick={() => {
+                      setPassword("text");
+                      setIsVisible(true);
+                    }}
+                  />
+                )}
+              </span>
+            </div>
+            <Link to="/forgot-password">
+              <p className="tw-fgt">Forgot Password?</p>
+            </Link>
+          </div>
+          <div>
+            <input
+              type="checkbox"
+              name="signedIn"
+              id="checkbox"
+              className="tw-accent-gray-800 tw-cursor-pointer"
+            />
+            <label htmlFor="checkbox">Keep me signed in</label>
+          </div>
+          <div
+            id="submit_login"
+            className="tw-flex tw-justify-between tw-mt-5 tw-items-end"
+          >
+            <input
+              type="submit"
+              className="login-btn tw-px-3 md:tw-px-5 tw-py-2 tw-bg-gray-900 tw-text-white tw-rounded hover:tw-bg-gray-800"
+              value="Login"
+            />
+          </div>
+        </form>
       </div>
     </div>
   );
