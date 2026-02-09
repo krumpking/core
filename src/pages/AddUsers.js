@@ -24,8 +24,12 @@ import { async } from "@firebase/util";
 
 function AddUsers({ role }) {
   const { authClaims } = useAuth();
+
+  // Initialize the callable function
   const addUser = httpsCallable(functions, "addUser");
+
   const form = useRef();
+
   useEffect(() => {
     document.title = "Add Users | Core Insurance Management";
     if (!authClaims.agent && role !== "Customer") {
@@ -166,194 +170,198 @@ function AddUsers({ role }) {
     event.preventDefault();
     setIsLoading(true);
 
-    // Verify user is authenticated before proceeding
-    if (!authentication.currentUser) {
-      toast.error("You must be logged in to perform this action", {
-        position: "top-center",
-      });
-      setIsLoading(false);
-      return;
-    }
-
-    console.log("Current user UID:", authentication.currentUser.uid);
-    console.log("Current user email:", authentication.currentUser.email);
-    console.log("Submitting with role:", role);
-
-    // Force refresh the authentication token to ensure it's valid
     try {
-      await authentication.currentUser.getIdToken(true);
-      console.log("Token refreshed successfully");
-    } catch (tokenError) {
-      console.error("Token refresh failed:", tokenError);
-      toast.error("Authentication error. Please log out and log back in.", {
+      const currentUser = authentication.currentUser;
+      if (!currentUser) {
+        toast.error("You must be logged in to perform this action", {
+          position: "top-center",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      if (comprehensive) fields["comprehensive"] = true;
+      if (mtp) fields["mtp"] = true;
+      if (windscreen) fields["windscreen"] = true;
+      if (newImport) fields["newImport"] = true;
+      if (transit) fields["transit"] = true;
+
+      fields["added_by_uid"] = authentication.currentUser.uid;
+      fields["added_by_name"] = authentication.currentUser.displayName;
+      fields["password"] = password;
+      fields["addedOn"] = `${new Date()
+        .toISOString()
+        .slice(
+          0,
+          10,
+        )} ${new Date().getHours()}:${new Date().getMinutes()}:${new Date().getSeconds()}`;
+
+      if (role === "agent" && authClaims.admin) {
+        fields["supervisor"] = supervisor;
+      }
+
+      if (logo) {
+        const storageRef = ref(storage, `images/${logo.name}`);
+        const uploadTask = uploadBytesResumable(storageRef, logo);
+
+        uploadTask.on(
+          "state_changed",
+          (snapshot) => {
+            const prog =
+              Math.round(snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            setProgress(prog);
+          },
+          (error) => console.log(error),
+          async () => {
+            await getDownloadURL(uploadTask.snapshot.ref)
+              .then((downloadUrl) => {
+                fields.photo = downloadUrl;
+              })
+              .then(async () => {
+                addUser(fields)
+                  .then(async (results) => {
+                    toast.success(`Successfully added ${fields.name}`, {
+                      position: "top-center",
+                    });
+                    const email_data = {
+                      name: fields.name,
+                      username: fields.email,
+                      password: fields.password,
+                      to: fields.email,
+                    };
+                    if (role != "Customer") {
+                      sendEmail(email_data);
+                    }
+
+                    setIsLoading(false);
+                    document.form3.reset();
+                  })
+                  .then(async () => {
+                    await addDoc(logCollectionRef, {
+                      timeCreated: `${new Date()
+                        .toISOString()
+                        .slice(
+                          0,
+                          10,
+                        )} ${new Date().getHours()}:${new Date().getMinutes()}:${new Date().getSeconds()}`,
+                      type: "user creation",
+                      status: "successful",
+                      message: `Successfully created ${fields.user_role} - [ ${fields.name} ] by ${authentication.currentUser.displayName}`,
+                    });
+                    setPassword("");
+                    setLogo("");
+                  })
+                  .catch(async (error) => {
+                    console.error("Error adding user:", error.message);
+
+                    let errorMessage =
+                      error.message || "Unknown error occurred";
+
+                    if (
+                      error.code === "unauthenticated" ||
+                      error.message?.includes("authenticated")
+                    ) {
+                      errorMessage =
+                        "Authentication failed. Please log out and log back in.";
+                    }
+
+                    toast.error(
+                      `Failed to add ${fields.name}: ${errorMessage}`,
+                      {
+                        position: "top-center",
+                        autoClose: 5000,
+                      },
+                    );
+
+                    await addDoc(logCollectionRef, {
+                      timeCreated: `${new Date()
+                        .toISOString()
+                        .slice(
+                          0,
+                          10,
+                        )} ${new Date().getHours()}:${new Date().getMinutes()}:${new Date().getSeconds()}`,
+                      type: "user creation",
+                      status: "failed",
+                      message: `Failed to create ${fields.user_role} - [ ${fields.name} ] by ${authentication.currentUser.displayName}. Error: ${errorMessage}`,
+                    });
+
+                    setPassword("");
+                    setLogo("");
+                    setIsLoading(false);
+                  });
+              });
+          },
+        );
+      } else {
+        addUser(fields)
+          .then(async (results) => {
+            toast.success(`Successfully added ${fields.name}`, {
+              position: "top-center",
+            });
+            const email_data = {
+              name: fields.name,
+              username: fields.email,
+              password: fields.password,
+              to: fields.email,
+            };
+            if (role != "Customer") {
+              sendEmail(email_data);
+            }
+            setIsLoading(false);
+            document.form3.reset();
+          })
+          .then(async () => {
+            await addDoc(logCollectionRef, {
+              timeCreated: `${new Date()
+                .toISOString()
+                .slice(
+                  0,
+                  10,
+                )} ${new Date().getHours()}:${new Date().getMinutes()}:${new Date().getSeconds()}`,
+              type: "user creation",
+              status: "successful",
+              message: `Successfully created ${fields.user_role} - [ ${fields.name} ] by ${authentication.currentUser.displayName}`,
+            });
+            setPassword("");
+          })
+          .catch(async (error) => {
+            console.error("Error adding user:", error.message);
+
+            let errorMessage = error.message || "Unknown error occurred";
+
+            if (
+              error.code === "unauthenticated" ||
+              error.message?.includes("authenticated")
+            ) {
+              errorMessage =
+                "Authentication failed. Please log out and log back in.";
+            }
+
+            toast.error(`Failed to add ${fields.name}: ${errorMessage}`, {
+              position: "top-center",
+              autoClose: 5000,
+            });
+
+            await addDoc(logCollectionRef, {
+              timeCreated: `${new Date()
+                .toISOString()
+                .slice(
+                  0,
+                  10,
+                )} ${new Date().getHours()}:${new Date().getMinutes()}:${new Date().getSeconds()}`,
+              type: "user creation",
+              status: "failed",
+              message: `Failed to create ${fields.user_role} - [ ${fields.name} ] by ${authentication.currentUser.displayName}. Error: ${errorMessage}`,
+            });
+            setIsLoading(false);
+          });
+      }
+    } catch (error) {
+      console.error("Unexpected error in handleSubmit:", error);
+      toast.error("An unexpected error occurred. Please try again.", {
         position: "top-center",
       });
       setIsLoading(false);
-      return;
-    }
-
-    if (comprehensive) fields["comprehensive"] = true;
-    if (mtp) fields["mtp"] = true;
-    if (windscreen) fields["windscreen"] = true;
-    if (newImport) fields["newImport"] = true;
-    if (transit) fields["transit"] = true;
-
-    fields["added_by_uid"] = authentication.currentUser.uid;
-    fields["added_by_name"] = authentication.currentUser.displayName;
-    fields["password"] = password;
-    fields["addedOn"] = `${new Date()
-      .toISOString()
-      .slice(
-        0,
-        10,
-      )} ${new Date().getHours()}:${new Date().getMinutes()}:${new Date().getSeconds()}`;
-    if (role === "agent" && authClaims.admin) {
-      fields["supervisor"] = supervisor;
-      console.log("reached here");
-    }
-
-    if (logo) {
-      const storageRef = ref(storage, `images/${logo.name}`);
-      const uploadTask = uploadBytesResumable(storageRef, logo);
-
-      uploadTask.on(
-        "state_changed",
-        (snapshot) => {
-          const prog =
-            Math.round(snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setProgress(prog);
-        },
-        (error) => console.log(error),
-        async () => {
-          await getDownloadURL(uploadTask.snapshot.ref)
-            .then((downloadUrl) => {
-              fields.photo = downloadUrl;
-            })
-            .then(async () => {
-              addUser(fields)
-                .then(async (results) => {
-                  console.log(results);
-                  toast.success(`Successfully added ${fields.name}`, {
-                    position: "top-center",
-                  });
-                  const email_data = {
-                    name: fields.name,
-                    username: fields.email,
-                    password: fields.password,
-                    to: fields.email,
-                  };
-                  if (role != "Customer") {
-                    sendEmail(email_data);
-                  }
-
-                  setIsLoading(false);
-                  document.form3.reset();
-                })
-                .then(async () => {
-                  await addDoc(logCollectionRef, {
-                    timeCreated: `${new Date()
-                      .toISOString()
-                      .slice(
-                        0,
-                        10,
-                      )} ${new Date().getHours()}:${new Date().getMinutes()}:${new Date().getSeconds()}`,
-                    type: "user creation",
-                    status: "successful",
-                    message: `Successfully created ${fields.user_role} - [ ${fields.name} ] by ${authentication.currentUser.displayName}`,
-                  });
-                  setPassword("");
-                  setLogo("");
-                })
-                .catch(async (error) => {
-                  console.error("Error adding user:", error);
-                  console.error("Error code:", error.code);
-                  console.error("Error message:", error.message);
-                  console.error("Error details:", error.details);
-
-                  const errorMessage =
-                    error.message || "Unknown error occurred";
-                  toast.error(`Failed to add ${fields.name}: ${errorMessage}`, {
-                    position: "top-center",
-                    autoClose: 5000,
-                  });
-
-                  await addDoc(logCollectionRef, {
-                    timeCreated: `${new Date()
-                      .toISOString()
-                      .slice(
-                        0,
-                        10,
-                      )} ${new Date().getHours()}:${new Date().getMinutes()}:${new Date().getSeconds()}`,
-                    type: "user creation",
-                    status: "failed",
-                    message: `Failed to create ${fields.user_role} - [ ${fields.name} ] by ${authentication.currentUser.displayName}. Error: ${errorMessage}`,
-                  });
-
-                  setPassword("");
-                  setLogo("");
-                  setIsLoading(false);
-                });
-            });
-        },
-      );
-    } else {
-      // console.log(fields)
-      addUser(fields)
-        .then(async (results) => {
-          toast.success(`Successfully added ${fields.name}`, {
-            position: "top-center",
-          });
-          const email_data = {
-            name: fields.name,
-            username: fields.email,
-            password: fields.password,
-            to: fields.email,
-          };
-          if (role != "Customer") {
-            sendEmail(email_data);
-          }
-          setIsLoading(false);
-          document.form3.reset();
-        })
-        .then(async () => {
-          await addDoc(logCollectionRef, {
-            timeCreated: `${new Date()
-              .toISOString()
-              .slice(
-                0,
-                10,
-              )} ${new Date().getHours()}:${new Date().getMinutes()}:${new Date().getSeconds()}`,
-            type: "user creation",
-            status: "successful",
-            message: `Successfully created ${fields.user_role} - [ ${fields.name} ] by ${authentication.currentUser.displayName}`,
-          });
-          setPassword("");
-        })
-        .catch(async (error) => {
-          console.error("Error adding user:", error);
-          console.error("Error code:", error.code);
-          console.error("Error message:", error.message);
-          console.error("Error details:", error.details);
-
-          const errorMessage = error.message || "Unknown error occurred";
-          toast.error(`Failed to add ${fields.name}: ${errorMessage}`, {
-            position: "top-center",
-            autoClose: 5000,
-          });
-
-          await addDoc(logCollectionRef, {
-            timeCreated: `${new Date()
-              .toISOString()
-              .slice(
-                0,
-                10,
-              )} ${new Date().getHours()}:${new Date().getMinutes()}:${new Date().getSeconds()}`,
-            type: "user creation",
-            status: "failed",
-            message: `Failed to create ${fields.user_role} - [ ${fields.name} ] by ${authentication.currentUser.displayName}. Error: ${errorMessage}`,
-          });
-          setIsLoading(false);
-        });
     }
   };
 

@@ -3,47 +3,90 @@ const admin = require("firebase-admin");
 
 admin.initializeApp();
 
+// Test function to verify connectivity
+exports.testConnection = functions.https.onCall(async (data, context) => {
+  console.log("=== testConnection called ===");
+  console.log("Auth exists:", !!context.auth);
+  console.log("Auth UID:", context.auth?.uid);
+  return {
+    success: true,
+    message: "Connection successful",
+    authenticated: !!context.auth,
+    uid: context.auth?.uid || null,
+    timestamp: new Date().toISOString(),
+  };
+});
+
 exports.addUser = functions.https.onCall(async (data, context) => {
   try {
-    // Log incoming request for debugging
-    console.log("addUser called with data:", JSON.stringify(data));
-    console.log("Context:", JSON.stringify(context));
-    console.log("Context auth:", JSON.stringify(context.auth));
-    console.log("Context auth uid:", context.auth?.uid);
-    console.log("Context.auth exists?", !!context.auth);
+    // Extract actual data and auth from nested structure
+    const actualData = data.data || data;
+    const actualAuth = data.auth || context.auth;
 
-    // TEMPORARY: Comment out auth check for debugging
-    // TODO: Re-enable this check after debugging
-    /*
-    if (!context.auth) {
-      console.error("No authentication context found");
+    // Check authentication
+    if (!actualAuth) {
       throw new functions.https.HttpsError(
         "unauthenticated",
-        "User must be authenticated to create users. Please ensure you are logged in.",
+        "User must be authenticated to create users.",
       );
     }
-    */
-    
-    if (context.auth) {
-      console.log("User authenticated:", context.auth.uid);
-    } else {
-      console.warn("WARNING: Proceeding without authentication context - FOR TESTING ONLY");
+
+    const authenticatedUid = actualAuth.uid;
+    const callerClaims = actualAuth.token || actualAuth;
+
+    if (!authenticatedUid) {
+      throw new functions.https.HttpsError(
+        "unauthenticated",
+        "User must be authenticated to create users.",
+      );
+    }
+
+    // Check role-based permissions
+    const userRoleToAdd = actualData.user_role.toLowerCase();
+
+    // Permission checks:
+    // - SuperAdmins can add anyone
+    // - Admins can add supervisors, agents, and customers
+    // - Supervisors can add agents and customers
+    // - Agents can add customers only
+
+    const isSuperAdmin = callerClaims.superadmin === true;
+    const isAdmin = callerClaims.admin === true;
+    const isSupervisor = callerClaims.supervisor === true;
+    const isAgent = callerClaims.agent === true;
+
+    let hasPermission = false;
+
+    if (isSuperAdmin) {
+      hasPermission = true;
+    } else if (isAdmin) {
+      hasPermission = ["supervisor", "agent", "customer"].includes(
+        userRoleToAdd,
+      );
+    } else if (isSupervisor) {
+      hasPermission = ["agent", "customer"].includes(userRoleToAdd);
+    } else if (isAgent) {
+      hasPermission = userRoleToAdd === "customer";
+    }
+
+    if (!hasPermission) {
+      throw new functions.https.HttpsError(
+        "permission-denied",
+        `You do not have permission to create ${userRoleToAdd} users.`,
+      );
     }
 
     // Create the user in Firebase Auth
-    console.log("Creating user with email:", data.email);
     const userRecord = await admin.auth().createUser({
-      email: data.email,
-      password: data.password,
-      displayName: data.name,
-      ...(data.phone && { phoneNumber: data.phone }), // Only add if phone exists
+      email: actualData.email,
+      password: actualData.password,
+      displayName: actualData.name,
+      ...(actualData.phone && { phoneNumber: actualData.phone }),
     });
-
-    console.log("User created with UID:", userRecord.uid);
 
     // Set custom claims (roles)
     const customClaims = {};
-    customClaims[data.user_role.toLowerCase()] = true;
+    customClaims[actualData.user_role.toLowerCase()] = true;
 
     await admin.auth().setCustomUserClaims(userRecord.uid, customClaims);
 
@@ -53,22 +96,22 @@ exports.addUser = functions.https.onCall(async (data, context) => {
       .collection("users")
       .doc(userRecord.uid)
       .set({
-        name: data.name,
-        email: data.email,
-        role: data.user_role,
-        organisation: data.organisation,
-        phone: data.phone,
-        gender: data.gender,
-        address: data.address,
-        added_by_uid: data.added_by_uid,
-        added_by_name: data.added_by_name,
-        addedOn: data.addedOn,
+        name: actualData.name,
+        email: actualData.email,
+        role: actualData.user_role,
+        organisation: actualData.organisation,
+        phone: actualData.phone,
+        gender: actualData.gender,
+        address: actualData.address,
+        added_by_uid: actualData.added_by_uid,
+        added_by_name: actualData.added_by_name,
+        addedOn: actualData.addedOn,
         meta: {
-          added_by_uid: data.added_by_uid,
-          added_by_name: data.added_by_name,
-          gender: data.gender,
-          phone: data.phone,
-          address: data.address,
+          added_by_uid: actualData.added_by_uid,
+          added_by_name: actualData.added_by_name,
+          gender: actualData.gender,
+          phone: actualData.phone,
+          address: actualData.address,
         },
       });
 
@@ -78,7 +121,133 @@ exports.addUser = functions.https.onCall(async (data, context) => {
       message: "User created successfully",
     };
   } catch (error) {
-    console.error("Error creating user:", error);
+    console.error("Error in addUser:", error.message);
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+    throw new functions.https.HttpsError("internal", error.message);
+  }
+});
+
+// List all users function
+exports.listUsers = functions.https.onCall(async (data, context) => {
+  try {
+    if (!context.auth) {
+      throw new functions.https.HttpsError(
+        "unauthenticated",
+        "User must be authenticated to list users.",
+      );
+    }
+
+    // Get all users from Firestore
+    const usersSnapshot = await admin.firestore().collection("users").get();
+    const users = [];
+
+    usersSnapshot.forEach((doc) => {
+      users.push({
+        uid: doc.id,
+        ...doc.data(),
+      });
+    });
+
+    return {
+      success: true,
+      users: users,
+      count: users.length,
+    };
+  } catch (error) {
+    console.error("Error listing users:", error);
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+    throw new functions.https.HttpsError("internal", error.message);
+  }
+});
+
+// Delete user function
+exports.deleteUser = functions.https.onCall(async (data, context) => {
+  try {
+    if (!context.auth) {
+      throw new functions.https.HttpsError(
+        "unauthenticated",
+        "User must be authenticated to delete users.",
+      );
+    }
+
+    const { uid } = data;
+    if (!uid) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "User UID is required.",
+      );
+    }
+
+    // Delete from Firebase Auth
+    await admin.auth().deleteUser(uid);
+
+    // Delete from Firestore
+    await admin.firestore().collection("users").doc(uid).delete();
+
+    return {
+      success: true,
+      message: "User deleted successfully",
+    };
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+    throw new functions.https.HttpsError("internal", error.message);
+  }
+});
+
+// Update user function
+exports.updateUser = functions.https.onCall(async (data, context) => {
+  try {
+    if (!context.auth) {
+      throw new functions.https.HttpsError(
+        "unauthenticated",
+        "User must be authenticated to update users.",
+      );
+    }
+
+    const { uid, ...updateData } = data;
+    if (!uid) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "User UID is required.",
+      );
+    }
+
+    // Update Firebase Auth if email or displayName changed
+    const authUpdates = {};
+    if (updateData.email) authUpdates.email = updateData.email;
+    if (updateData.name) authUpdates.displayName = updateData.name;
+    if (updateData.phone) authUpdates.phoneNumber = updateData.phone;
+
+    if (Object.keys(authUpdates).length > 0) {
+      await admin.auth().updateUser(uid, authUpdates);
+    }
+
+    // Update custom claims if role changed
+    if (updateData.user_role) {
+      const customClaims = {};
+      customClaims[updateData.user_role.toLowerCase()] = true;
+      await admin.auth().setCustomUserClaims(uid, customClaims);
+    }
+
+    // Update Firestore document
+    await admin.firestore().collection("users").doc(uid).update(updateData);
+
+    return {
+      success: true,
+      message: "User updated successfully",
+    };
+  } catch (error) {
+    console.error("Error updating user:", error);
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
     throw new functions.https.HttpsError("internal", error.message);
   }
 });

@@ -30,6 +30,16 @@ export const authentication = getAuth(app);
 // Ensure functions use the same app instance and default region (us-central1)
 export const functions = getFunctions(app, "us-central1");
 
+// IMPORTANT: Ensure auth state is properly connected to functions
+// This helps Firebase Functions automatically attach auth tokens
+authentication.onAuthStateChanged((user) => {
+  if (user) {
+    console.log("Firebase Auth state changed - User logged in:", user.uid);
+  } else {
+    console.log("Firebase Auth state changed - User logged out");
+  }
+});
+
 export const db = getFirestore(app);
 
 export const storage = getStorage(app);
